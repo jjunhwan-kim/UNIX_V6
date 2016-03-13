@@ -230,42 +230,42 @@ exit()
 	register int *q, a;
 	register struct proc *p;
 
-	u.u_procp->p_flag =& ~STRC;
-	for(q = &u.u_signal[0]; q < &u.u_signal[NSIG];)
+	u.u_procp->p_flag =& ~STRC;								//트레이스 플레그 무효화(>>)
+	for(q = &u.u_signal[0]; q < &u.u_signal[NSIG];)			//시그널 무시하기 위해 u.usignal 모두 1(>>) //#define NSIG 20
 		*q++ = 1;
-	for(q = &u.u_ofile[0]; q < &u.u_ofile[NOFILE]; q++)
+	for(q = &u.u_ofile[0]; q < &u.u_ofile[NOFILE]; q++)		//프로세스가 오픈한 파일 모두 close //#define NOFILE 15
 		if(a = *q) {
 			*q = NULL;
 			closef(a);
 		}
-	iput(u.u_cdir);
-	xfree();
-	a = malloc(swapmap, 1);
+	iput(u.u_cdir);				//현재 디렉토리 참조 카운터 감소(>>)
+	xfree();					//텍스트 세그먼트 해제
+	a = malloc(swapmap, 1);		//스와프 영역 확보 swapmap(스와핑 공간)의 주소를 매개변수로
 	if(a == NULL)
 		panic("out of swap");
-	p = getblk(swapdev, a);
-	bcopy(&u, p->b_addr, 256);
-	bwrite(p);
+	p = getblk(swapdev, a);		//블록 디바이스의 버퍼를 얻는다(위의 malloc 과 다른점(??))
+	bcopy(&u, p->b_addr, 256);	//블록 디바이스의 버퍼에 512바이트(데이터 세그먼트) 저장
+	bwrite(p);					//블록 디바이스 스와프 영역에 저장
 	q = u.u_procp;
 	mfree(coremap, q->p_size, q->p_addr);
 	q->p_addr = a;
-	q->p_stat = SZOMB;
+	q->p_stat = SZOMB;			//스와프 된 정보를 저장(재실행 되지 않음)
 
 loop:
 	for(p = &proc[0]; p < &proc[NPROC]; p++)
-	if(q->p_ppid == p->p_pid) {
-		wakeup(&proc[1]);
-		wakeup(p);
+	if(q->p_ppid == p->p_pid) {		//부모 프로세스 찾음
+		wakeup(&proc[1]);			//Init 프로세스 깨움
+		wakeup(p);					//부모 프로세스 깨움
 		for(p = &proc[0]; p < &proc[NPROC]; p++)
-		if(q->p_pid == p->p_ppid) {
-			p->p_ppid  = 1;
+		if(q->p_pid == p->p_ppid) {	//자식 프로세스 찾음
+			p->p_ppid  = 1;			//Init의 자식으로 만듦
 			if (p->p_stat == SSTOP)
-				setrun(p);
+				setrun(p);			//트레이스 기다리는 상태면 실행가는 상태로 변경
 		}
-		swtch();
+		swtch();					//실행 프로세스 바꿈
 		/* no return */
 	}
-	q->p_ppid = 1;
+	q->p_ppid = 1;					//부모 프로세스를 Init으로 만듦(어떤 오류로 인해서 부모 프로세스가 없을 때)
 	goto loop;
 }
 
@@ -282,13 +282,12 @@ wait()
 	register struct proc *p;
 
 	f = 0;
-
 loop:
 	for(p = &proc[0]; p < &proc[NPROC]; p++)
 	if(p->p_ppid == u.u_procp->p_pid) {
-		f++;
+		f++;										//자식 프로세스 찾고, 수 증가
 		if(p->p_stat == SZOMB) {
-			u.u_ar0[R0] = p->p_pid;
+			u.u_ar0[R0] = p->p_pid;					//자식의 pid를 R0에 저장
 			bp = bread(swapdev, f=p->p_addr);
 			mfree(swapmap, 1, f);
 			p->p_stat = NULL;
@@ -304,11 +303,11 @@ loop:
 			u.u_cutime[0] =+ p->u_cutime[0];
 			dpadd(u.u_cutime, p->u_cutime[1]);
 			dpadd(u.u_cutime, p->u_utime);
-			u.u_ar0[R1] = p->u_arg[0];
+			u.u_ar0[R1] = p->u_arg[0];				//사용자 프로세스 R1에 u_arg[0] 저장, 자식프로세스가 종료 상태인 것을 알 수 있다.
 			brelse(bp);
 			return;
 		}
-		if(p->p_stat == SSTOP) {
+		if(p->p_stat == SSTOP) {					//트레이스 처리(>>)
 			if((p->p_flag&SWTED) == 0) {
 				p->p_flag =| SWTED;
 				u.u_ar0[R0] = p->p_pid;
@@ -320,7 +319,7 @@ loop:
 		}
 	}
 	if(f) {
-		sleep(u.u_procp, PWAIT);
+		sleep(u.u_procp, PWAIT);		//자식 프로세스에 좀비상태가 없으면 sleep 상태가 되어 자식 프로세스 끝날 때 까지 대기
 		goto loop;
 	}
 	u.u_error = ECHILD;
