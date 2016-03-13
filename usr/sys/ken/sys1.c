@@ -35,14 +35,14 @@ exec()
 	 * for execute permission
 	 */
 
-	ip = namei(&uchar, 0);
+	ip = namei(&uchar, 0);							// ip에 inode[] 엔트리를 가져옴  
 	if(ip == NULL)
 		return;
 	while(execnt >= NEXEC)
 		sleep(&execnt, EXPRI);
 	execnt++;
-	bp = getblk(NODEV);
-	if(access(ip, IEXEC) || (ip->i_mode&IFMT)!=0)
+	bp = getblk(NODEV);								// 사용중이지 않은 블럭 디바이스 버퍼 할당
+	if(access(ip, IEXEC) || (ip->i_mode&IFMT)!=0)	// inode의 실행파일의 실행 권한을 검사, 스페셜 파일인지 검사
 		goto bad;
 
 	/*
@@ -50,10 +50,10 @@ exec()
 	 * allocated disk buffer
 	 */
 
-	cp = bp->b_addr;
-	na = 0;
-	nc = 0;
-	while(ap = fuword(u.u_arg[1])) {
+	cp = bp->b_addr;	// 버퍼 어드레스 저장
+	na = 0;				// 매개변수의 수
+	nc = 0;				// 매개변수의 총 Byte 수
+	while(ap = fuword(u.u_arg[1])) {	
 		na++;
 		if(ap == -1)
 			goto bad;
@@ -72,7 +72,7 @@ exec()
 				break;
 		}
 	}
-	if((nc&1) != 0) {
+	if((nc&1) != 0) {	// nc가 홀수일 경우 워드단위로 처리하기 위해 한 바이트를 더함
 		*cp++ = 0;
 		nc++;
 	}
@@ -118,7 +118,7 @@ exec()
 	 * exceed of max sizes
 	 */
 
-	ts = ((u.u_arg[1]+63)>>6) & 01777;
+	ts = ((u.u_arg[1]+63)>>6) & 01777;					// +63은 64보다 작을 경우
 	ds = ((u.u_arg[2]+u.u_arg[3]+63)>>6) & 01777;
 	if(estabur(ts, ds, SSIZE, sep))
 		goto bad;
@@ -158,7 +158,7 @@ exec()
 	u.u_sep = sep;
 	estabur(u.u_tsize, u.u_dsize, u.u_ssize, u.u_sep);
 	cp = bp->b_addr;
-	ap = -nc - na*2 - 4;
+	ap = -1 - na*2 - 4;
 	u.u_ar0[R6] = ap;
 	suword(ap, na);
 	c = -nc;
