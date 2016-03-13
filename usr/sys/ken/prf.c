@@ -109,6 +109,7 @@ putchar(c)
  * fatal errors.
  * It syncs, prints "panic: mesg" and
  * then loops.
+ * TEST. By SDD.
  */
 panic(s)
 char *s;
