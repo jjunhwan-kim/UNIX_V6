@@ -35,14 +35,14 @@ exec()
 	 * for execute permission
 	 */
 
-	ip = namei(&uchar, 0);							// ip¿¡ inode[] ¿£Æ®¸®¸¦ °¡Á®¿È  
+	ip = namei(&uchar, 0);
 	if(ip == NULL)
 		return;
 	while(execnt >= NEXEC)
 		sleep(&execnt, EXPRI);
 	execnt++;
-	bp = getblk(NODEV);								// »ç¿ëÁßÀÌÁö ¾ÊÀº ºí·° µğ¹ÙÀÌ½º ¹öÆÛ ÇÒ´ç
-	if(access(ip, IEXEC) || (ip->i_mode&IFMT)!=0)	// inodeÀÇ ½ÇÇàÆÄÀÏÀÇ ½ÇÇà ±ÇÇÑÀ» °Ë»ç, ½ºÆä¼È ÆÄÀÏÀÎÁö °Ë»ç
+	bp = getblk(NODEV);
+	if(access(ip, IEXEC) || (ip->i_mode&IFMT)!=0)
 		goto bad;
 
 	/*
@@ -50,10 +50,10 @@ exec()
 	 * allocated disk buffer
 	 */
 
-	cp = bp->b_addr;	// ¹öÆÛ ¾îµå·¹½º ÀúÀå
-	na = 0;				// ¸Å°³º¯¼öÀÇ ¼ö
-	nc = 0;				// ¸Å°³º¯¼öÀÇ ÃÑ Byte ¼ö
-	while(ap = fuword(u.u_arg[1])) {	
+	cp = bp->b_addr;
+	na = 0;
+	nc = 0;
+	while(ap = fuword(u.u_arg[1])) {
 		na++;
 		if(ap == -1)
 			goto bad;
@@ -72,7 +72,7 @@ exec()
 				break;
 		}
 	}
-	if((nc&1) != 0) {	// nc°¡ È¦¼öÀÏ °æ¿ì ¿öµå´ÜÀ§·Î Ã³¸®ÇÏ±â À§ÇØ ÇÑ ¹ÙÀÌÆ®¸¦ ´õÇÔ
+	if((nc&1) != 0) {
 		*cp++ = 0;
 		nc++;
 	}
@@ -118,7 +118,7 @@ exec()
 	 * exceed of max sizes
 	 */
 
-	ts = ((u.u_arg[1]+63)>>6) & 01777;					// +63Àº 64º¸´Ù ÀÛÀ» °æ¿ì
+	ts = ((u.u_arg[1]+63)>>6) & 01777;
 	ds = ((u.u_arg[2]+u.u_arg[3]+63)>>6) & 01777;
 	if(estabur(ts, ds, SSIZE, sep))
 		goto bad;
@@ -158,7 +158,7 @@ exec()
 	u.u_sep = sep;
 	estabur(u.u_tsize, u.u_dsize, u.u_ssize, u.u_sep);
 	cp = bp->b_addr;
-	ap = -1 - na*2 - 4;
+	ap = -nc - na*2 - 4;
 	u.u_ar0[R6] = ap;
 	suword(ap, na);
 	c = -nc;
@@ -377,13 +377,13 @@ sbreak()
 	if(n < 0)
 		n = 0;
 	d = n - u.u_dsize;
-	n =+ USIZE+u.u_ssize;
-	if(estabur(u.u_tsize, u.u_dsize+d, u.u_ssize, u.u_sep))
+	n =+ USIZE+u.u_ssize;		//n ê³„ì‚° ë°©ë²•(??)
+	if(estabur(u.u_tsize, u.u_dsize+d, u.u_ssize, u.u_sep))		//APR ê°±ì‹ (ì‚¬ìš©ì ê³µê°„ ê°±ì‹ )
 		return;
-	u.u_dsize =+ d;
+	u.u_dsize =+ d;				//user êµ¬ì¡°ì²´ì˜ ë°ì´í„° ì˜ì—­ ê°±ì‹ 
 	if(d > 0)
 		goto bigger;
-	a = u.u_procp->p_addr + n - u.u_ssize;
+	a = u.u_procp->p_addr + n - u.u_ssize;						//ë°ì´í„° ì˜ì—­ í™•ì¥, ì¶•ì†Œ(??)
 	i = n;
 	n = u.u_ssize;
 	while(n--) {
