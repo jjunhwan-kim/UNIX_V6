@@ -230,7 +230,7 @@ exit()
 	register int *q, a;
 	register struct proc *p;
 
-	u.u_procp->p_flag =& ~STRC;								//트레이스 플레그 무효화(>>)
+	u.u_procp->p_flag =& ~STRC;					//트레이스 플레그 무효화(>>)
 	for(q = &u.u_signal[0]; q < &u.u_signal[NSIG];)			//시그널 무시하기 위해 u.usignal 모두 1(>>) //#define NSIG 20
 		*q++ = 1;
 	for(q = &u.u_ofile[0]; q < &u.u_ofile[NOFILE]; q++)		//프로세스가 오픈한 파일 모두 close //#define NOFILE 15
@@ -239,13 +239,13 @@ exit()
 			closef(a);
 		}
 	iput(u.u_cdir);				//현재 디렉토리 참조 카운터 감소(>>)
-	xfree();					//텍스트 세그먼트 해제
-	a = malloc(swapmap, 1);		//스와프 영역 확보 swapmap(스와핑 공간)의 주소를 매개변수로
+	xfree();				//텍스트 세그먼트 해제
+	a = malloc(swapmap, 1);			//스와프 영역 확보 swapmap(스와핑 공간)의 주소를 매개변수로
 	if(a == NULL)
 		panic("out of swap");
-	p = getblk(swapdev, a);		//블록 디바이스의 버퍼를 얻는다(위의 malloc 과 다른점(??))
-	bcopy(&u, p->b_addr, 256);	//블록 디바이스의 버퍼에 512바이트(데이터 세그먼트) 저장
-	bwrite(p);					//블록 디바이스 스와프 영역에 저장
+	p = getblk(swapdev, a);			//블록 디바이스의 버퍼를 얻는다(위의 malloc 과 다른점(??))
+	bcopy(&u, p->b_addr, 256);		//블록 디바이스의 버퍼에 512바이트(데이터 세그먼트) 저장
+	bwrite(p);				//블록 디바이스 스와프 영역에 저장
 	q = u.u_procp;
 	mfree(coremap, q->p_size, q->p_addr);
 	q->p_addr = a;
@@ -253,16 +253,16 @@ exit()
 
 loop:
 	for(p = &proc[0]; p < &proc[NPROC]; p++)
-	if(q->p_ppid == p->p_pid) {		//부모 프로세스 찾음
+	if(q->p_ppid == p->p_pid) {			//부모 프로세스 찾음
 		wakeup(&proc[1]);			//Init 프로세스 깨움
-		wakeup(p);					//부모 프로세스 깨움
+		wakeup(p);				//부모 프로세스 깨움
 		for(p = &proc[0]; p < &proc[NPROC]; p++)
-		if(q->p_pid == p->p_ppid) {	//자식 프로세스 찾음
+		if(q->p_pid == p->p_ppid) {		//자식 프로세스 찾음
 			p->p_ppid  = 1;			//Init의 자식으로 만듦
 			if (p->p_stat == SSTOP)
-				setrun(p);			//트레이스 기다리는 상태면 실행가는 상태로 변경
+				setrun(p);		//트레이스 기다리는 상태면 실행가는 상태로 변경
 		}
-		swtch();					//실행 프로세스 바꿈
+		swtch();				//실행 프로세스 바꿈
 		/* no return */
 	}
 	q->p_ppid = 1;					//부모 프로세스를 Init으로 만듦(어떤 오류로 인해서 부모 프로세스가 없을 때)
@@ -285,9 +285,9 @@ wait()
 loop:
 	for(p = &proc[0]; p < &proc[NPROC]; p++)
 	if(p->p_ppid == u.u_procp->p_pid) {
-		f++;										//자식 프로세스 찾고, 수 증가
+		f++;						//자식 프로세스 찾고, 수 증가
 		if(p->p_stat == SZOMB) {
-			u.u_ar0[R0] = p->p_pid;					//자식의 pid를 R0에 저장
+			u.u_ar0[R0] = p->p_pid;			//자식의 pid를 R0에 저장
 			bp = bread(swapdev, f=p->p_addr);
 			mfree(swapmap, 1, f);
 			p->p_stat = NULL;
@@ -303,11 +303,11 @@ loop:
 			u.u_cutime[0] =+ p->u_cutime[0];
 			dpadd(u.u_cutime, p->u_cutime[1]);
 			dpadd(u.u_cutime, p->u_utime);
-			u.u_ar0[R1] = p->u_arg[0];				//사용자 프로세스 R1에 u_arg[0] 저장, 자식프로세스가 종료 상태인 것을 알 수 있다.
+			u.u_ar0[R1] = p->u_arg[0];		//사용자 프로세스 R1에 u_arg[0] 저장, 자식프로세스가 종료 상태인 것을 알 수 있다.
 			brelse(bp);
 			return;
 		}
-		if(p->p_stat == SSTOP) {					//트레이스 처리(>>)
+		if(p->p_stat == SSTOP) {			//트레이스 처리(>>)
 			if((p->p_flag&SWTED) == 0) {
 				p->p_flag =| SWTED;
 				u.u_ar0[R0] = p->p_pid;
@@ -377,13 +377,13 @@ sbreak()
 	if(n < 0)
 		n = 0;
 	d = n - u.u_dsize;
-	n =+ USIZE+u.u_ssize;		//n 계산 방법(??)
+	n =+ USIZE+u.u_ssize;						//n 계산 방법(??)
 	if(estabur(u.u_tsize, u.u_dsize+d, u.u_ssize, u.u_sep))		//APR 갱신(사용자 공간 갱신)
 		return;
-	u.u_dsize =+ d;				//user 구조체의 데이터 영역 갱신
+	u.u_dsize =+ d;							//user 구조체의 데이터 영역 갱신
 	if(d > 0)
 		goto bigger;
-	a = u.u_procp->p_addr + n - u.u_ssize;						//데이터 영역 확장, 축소(??)
+	a = u.u_procp->p_addr + n - u.u_ssize;				//데이터 영역 확장, 축소(??)
 	i = n;
 	n = u.u_ssize;
 	while(n--) {

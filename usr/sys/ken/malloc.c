@@ -31,16 +31,16 @@ struct map *mp;
 	register int a;
 	register struct map *bp;
 
-	for (bp = mp; bp->m_size; bp++) {		//map을 증가시키면서 센터닐 전까지 동작
+	for (bp = mp; bp->m_size; bp++) {			//map을 증가시키면서 센터닐 전까지 동작
 		if (bp->m_size >= size) {			//빈공간의 크기가 요청한 크기보다 크면
 			a = bp->m_addr;
-			bp->m_addr =+ size;				//빈공간의 주소 증가
-			if ((bp->m_size =- size) == 0)	//빈공간의 사이즈와 요청한 사이즈가 같을 때
+			bp->m_addr =+ size;			//빈공간의 주소 증가
+			if ((bp->m_size =- size) == 0)		//빈공간의 사이즈와 요청한 사이즈가 같을 때
 				do {
 					bp++;
 					(bp-1)->m_addr = bp->m_addr;		//다음 빙공간을 한개씩 앞으로 당김
-				} while ((bp-1)->m_size = bp->m_size);	//센티널이 나올 때까지 반복
-			return(a);									//할당 할 수 있는 메모리 주소 할당
+				} while ((bp-1)->m_size = bp->m_size);		//센티널이 나올 때까지 반복
+			return(a);						//할당 할 수 있는 메모리 주소 할당
 		}
 	}
 	return(0);
