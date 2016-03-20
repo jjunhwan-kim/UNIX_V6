@@ -27,20 +27,20 @@ int *p;
 
 	rp = p;
 	if(os == 0)
-		os = rp->p_size;
-	a = malloc(swapmap, (rp->p_size+7)/8);
+		os = rp->p_size;		//os인자가 0이면 프로세스의 p_size 사용
+	a = malloc(swapmap, (rp->p_size+7)/8);	//스와프 영역에 확보
 	if(a == NULL)
 		panic("out of swap space");
-	xccdec(rp->p_textp);
+	xccdec(rp->p_textp);			//텍스트 세그먼트 사용했으면 텍스트 세그먼트 영역 메모리 해제
 	rp->p_flag =| SLOCK;
-	if(swap(a, rp->p_addr, os, 0))
+	if(swap(a, rp->p_addr, os, 0))		//스와프 아웃
 		panic("swap error");
 	if(ff)
-		mfree(coremap, os, rp->p_addr);
-	rp->p_addr = a;
-	rp->p_flag =& ~(SLOAD|SLOCK);
-	rp->p_time = 0;
-	if(runout) {
+		mfree(coremap, os, rp->p_addr);	//메모리 영역 해제
+	rp->p_addr = a;				//p_addr스와프 영역 주소 저장
+	rp->p_flag =& ~(SLOAD|SLOCK);		//SLOAD, SLOCK(스와핑 처리 중을 나타내는 플래그) 해제
+	rp->p_time = 0;				//스와프 영역에 머무른 시간 초기화
+	if(runout) {				//run out 플래그 초기화
 		runout = 0;
 		wakeup(&runout);
 	}
@@ -97,45 +97,45 @@ int *ip;
 	for(xp = &text[0]; xp < &text[NTEXT]; xp++)
 		if(xp->x_iptr == NULL) {
 			if(rp == NULL)
-				rp = xp;
+				rp = xp;			//빈 text[]엔트리가 있으면 그곳에 삽입
 		} else
-			if(xp->x_iptr == ip) {
-				xp->x_count++;
-				u.u_procp->p_textp = xp;
+			if(xp->x_iptr == ip) {			//텍스트 엔트리에 inode 가 일치하는 텍스트 구조체가 있으면
+				xp->x_count++;			//구조체의 count 증가시키고
+				u.u_procp->p_textp = xp;	//구조체를 실행중인 프로세스에 할당
 				goto out;
 			}
-	if((xp=rp) == NULL)
+	if((xp=rp) == NULL)					//텍스트 엔트리에 빈 엔트리 없고, inode가 일치하는 엔트리도 없을 때
 		panic("out of text");
 	xp->x_count = 1;
 	xp->x_ccount = 0;
 	xp->x_iptr = ip;
-	ts = ((u.u_arg[1]+63)>>6) & 01777;
+	ts = ((u.u_arg[1]+63)>>6) & 01777;			//텍스트 크기(??)
 	xp->x_size = ts;
-	if((xp->x_daddr = malloc(swapmap, (ts+7)/8)) == NULL)
+	if((xp->x_daddr = malloc(swapmap, (ts+7)/8)) == NULL)	//텍스트 크기 만큼스와프 영역 확보
 		panic("out of swap space");
-	expand(USIZE+ts);
-	estabur(0, ts, 0, 0);
-	u.u_count = u.u_arg[1];
-	u.u_offset[1] = 020;
+	expand(USIZE+ts);					//(??)
+	estabur(0, ts, 0, 0);					//(??)
+	u.u_count = u.u_arg[1];					//사용자 가상 어드레스 0x0에 읽음
+	u.u_offset[1] = 020;					//실행 프로그램의 헤더를 건너 뜀
 	u.u_base = 0;
 	readi(ip);
 	rp = u.u_procp;
 	rp->p_flag =| SLOCK;
-	swap(xp->x_daddr, rp->p_addr+USIZE, ts, 0);
+	swap(xp->x_daddr, rp->p_addr+USIZE, ts, 0);		//실행중인 프로세스의 paddr_USIZE에 존재하는 텍스트를 스와프 아웃
 	rp->p_flag =& ~SLOCK;
 	rp->p_textp = xp;
 	rp = ip;
 	rp->i_flag =| ITEXT;
-	rp->i_count++;
-	expand(USIZE);
+	rp->i_count++;						//inode를 참조하고있는 프로세스의 수 증가
+	expand(USIZE);						//(??)
 
 out:
-	if(xp->x_ccount == 0) {
+	if(xp->x_ccount == 0) {					//(??)
 		savu(u.u_rsav);
 		savu(u.u_ssav);
-		xswap(u.u_procp, 1, 0);
+		xswap(u.u_procp, 1, 0);				//(??)
 		u.u_procp->p_flag =| SSWAP;
-		swtch();
+		swtch();					//(??)
 		/* no return */
 	}
 	xp->x_ccount++;
@@ -150,7 +150,7 @@ int *xp;
 {
 	register *rp;
 
-	if((rp=xp)!=NULL && rp->x_ccount!=0)
-		if(--rp->x_ccount == 0)
+	if((rp=xp)!=NULL && rp->x_ccount!=0)			//프로세스가 텍스트 세그먼트를 참조하고 있으면
+		if(--rp->x_ccount == 0)				//참조 수를 감소시키고 참조 수가 0이면 메모리 해제
 			mfree(coremap, rp->x_size, rp->x_caddr);
 }

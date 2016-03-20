@@ -38,7 +38,7 @@ struct user
 	int	u_uisd[16];		/* prototype of segmentation descriptors */
 	int	u_ofile[NOFILE];	/* pointers to file structures of open files */
 	int	u_arg[5];		/* arguments to current system call */
-	int	u_tsize;		/* text size (*64) */
+	int	u_tsize;		/* 텍스트 세그먼트 사이즈 64Byte 단위 */
 	int	u_dsize;		/* data size (*64) */
 	int	u_ssize;		/* stack size (*64) */
 	int	u_sep;			/* flag for I and D separation */

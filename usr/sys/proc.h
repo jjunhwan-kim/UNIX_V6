@@ -19,8 +19,8 @@ struct	proc
 	int	p_ttyp;		/* controlling tty */
 	int	p_pid;		/* unique process id */
 	int	p_ppid;		/* process id of parent */
-	int	p_addr;		/* address of swappable image */
-	int	p_size;		/* size of swappable image (*64 bytes) */
+	int	p_addr;		/* 데이터 세그먼트의 물리 어드레스 address of swappable image */
+	int	p_size;		/* 데이터 세그먼트의 사이즈(64Byte 단위)size of swappable image (*64 bytes) */
 	int	p_wchan;	/* event process is awaiting */
 	int	*p_textp;	/* pointer to text structure */
 } proc[NPROC];

@@ -156,18 +156,19 @@ sched()
 
 sloop:
 	runin++;
-	sleep(&runin, PSWP);
+	sleep(&runin, PSWP);			//나중에 확인(>>)
 
 loop:
-	spl6();
+	/* 스와프 인 대상 프로세스 검색*/
+	spl6();			//우선순위 6 이상의 인터럽트 막음 (>>5)
 	n = -1;
 	for(rp = &proc[0]; rp < &proc[NPROC]; rp++)
 	if(rp->p_stat==SRUN && (rp->p_flag&SLOAD)==0 &&
 	    rp->p_time > n) {
 		p1 = rp;
 		n = rp->p_time;
-	}
-	if(n == -1) {
+	}			//스와프 아웃 영역에서 가장 오래 머무른 프로세스 검색
+	if(n == -1) {		//스와프 아웃 대상 프로세스 없으면 runout 세우고 sleep
 		runout++;
 		sleep(&runout, PSWP);
 		goto loop;
@@ -177,13 +178,13 @@ loop:
 	 * see if there is core for that process
 	 */
 
-	spl0();
+	spl0();					//인터럽트 허가??(>>)
 	rp = p1;
 	a = rp->p_size;
-	if((rp=rp->p_textp) != NULL)
+	if((rp=rp->p_textp) != NULL)		//텍스트 세그먼트가 메모리에 없으면
 		if(rp->x_ccount == 0)
 			a =+ rp->x_size;
-	if((a=malloc(coremap, a)) != NULL)
+	if((a=malloc(coremap, a)) != NULL)	//텍스트 세그먼트 만큼 공간 확보
 		goto found2;
 
 	/*
@@ -194,7 +195,7 @@ loop:
 	spl6();
 	for(rp = &proc[0]; rp < &proc[NPROC]; rp++)
 	if((rp->p_flag&(SSYS|SLOCK|SLOAD))==SLOAD &&
-	    (rp->p_stat == SWAIT || rp->p_stat==SSTOP))
+	    (rp->p_stat == SWAIT || rp->p_stat==SSTOP))		//SLOAD 이고 SWAIT이나 SSTOP상태인 프로세스 검색
 		goto found1;
 
 	/*
@@ -204,8 +205,9 @@ loop:
 	 * oldest process in core
 	 */
 
+	//SLOAD 중에서 SWAIT, SSTOP 없을 때
 	if(n < 3)
-		goto sloop;
+		goto sloop;	//메모리에 가장 오래 머무른 프로세스가 3초 이하면 sched 처음으로
 	n = -1;
 	for(rp = &proc[0]; rp < &proc[NPROC]; rp++)
 	if((rp->p_flag&(SSYS|SLOCK|SLOAD))==SLOAD &&
@@ -213,10 +215,10 @@ loop:
 	    rp->p_time > n) {
 		p1 = rp;
 		n = rp->p_time;
-	}
+	}			//SLOAD 이고 SRUN이나 SSLEEP 상태인 프로세스 중에서 가장 오래 머무른 시간 검색
 	if(n < 2)
-		goto sloop;
-	rp = p1;
+		goto sloop;	//가장 오래 머무른 프로세스가 2초 이하면 sched 처음으로
+	rp = p1;		//rp = 스와프 아웃 대상
 
 	/*
 	 * swap user out
@@ -224,8 +226,8 @@ loop:
 
 found1:
 	spl0();
-	rp->p_flag =& ~SLOAD;
-	xswap(rp, 1, 0);
+	rp->p_flag =& ~SLOAD;	//플래그에서 SLOAD 해제
+	xswap(rp, 1, 0);	//스와프 아웃
 	goto loop;
 
 	/*
@@ -234,21 +236,21 @@ found1:
 
 found2:
 	if((rp=p1->p_textp) != NULL) {
-		if(rp->x_ccount == 0) {
-			if(swap(rp->x_daddr, a, rp->x_size, B_READ))
+		if(rp->x_ccount == 0) {					//메모리에 공유하는 텍스트 세그먼트가 없으면
+			if(swap(rp->x_daddr, a, rp->x_size, B_READ))	//텍스트 세그먼트를 스와프 인
 				goto swaper;
-			rp->x_caddr = a;
-			a =+ rp->x_size;
+			rp->x_caddr = a;				//스와프 인 한 물리주소를 저장
+			a =+ rp->x_size;				//스와프 인 한 텍스트 세그먼트 사이즈만큼 주소 증가
 		}
-		rp->x_ccount++;
+		rp->x_ccount++;						//ccount(텍스트 세그먼트를 공유하고 있는 수) 증가
 	}
 	rp = p1;
-	if(swap(rp->p_addr, a, rp->p_size, B_READ))
+	if(swap(rp->p_addr, a, rp->p_size, B_READ))			//텍스트세그먼트 뒤에 데이터 세그먼트 스와프 인
 		goto swaper;
 	mfree(swapmap, (rp->p_size+7)/8, rp->p_addr);
-	rp->p_addr = a;
-	rp->p_flag =| SLOAD;
-	rp->p_time = 0;
+	rp->p_addr = a;							//paddr에 데이터 세그먼트 주소 저장
+	rp->p_flag =| SLOAD;						//플래그 SLOAD 상태로 만듦
+	rp->p_time = 0;							//머무른 시간 초기화
 	goto loop;
 
 swaper:
